@@ -1,0 +1,144 @@
+#TensorFlow 2_quickstart_for_beginners_using_Kera
+
+
+
+import tensorflow as tf
+print("TensorFlow version:", tf.__version__)
+TensorFlow version: 2.19.0
+
+
+Note: Make sure you have upgraded to the latest pip to install the TensorFlow 2 package if you are using your own development environment. See the install guide for details.
+
+Load a dataset
+Load and prepare the MNIST dataset. The pixel values of the images range from 0 through 255. Scale these values to a range of 0 to 1 by dividing the values by 255.0. This also converts the sample data from integers to floating-point numbers:
+
+
+#Train_your_data
+mnist = tf.keras.datasets.mnist
+
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0
+Downloading data from https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
+11490434/11490434 ━━━━━━━━━━━━━━━━━━━━ 0s 0us/step
+Build a machine learning model
+Build a tf.keras.Sequential model:
+
+
+[4]
+0s
+model = tf.keras.models.Sequential([
+  tf.keras.layers.Flatten(input_shape=(28, 28)),
+  tf.keras.layers.Dense(128, activation='relu'),
+  tf.keras.layers.Dropout(0.2),
+  tf.keras.layers.Dense(10)
+])
+/usr/local/lib/python3.12/dist-packages/keras/src/layers/reshaping/flatten.py:37: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+Sequential is useful for stacking layers where each layer has one input tensor and one output tensor. Layers are functions with a known mathematical structure that can be reused and have trainable variables. Most TensorFlow models are composed of layers. This model uses the Flatten, Dense, and Dropout layers.
+
+For each example, the model returns a vector of logits or log-odds scores, one for each class.
+
+
+[5]
+0s
+predictions = model(x_train[:1]).numpy()
+predictions
+array([[ 0.9265696 ,  0.24254817, -0.2728455 , -0.38217378, -0.12497778,
+        -0.1380099 ,  0.6613582 ,  0.32425004,  0.12928125, -0.46566808]],
+      dtype=float32)
+The tf.nn.softmax function converts these logits to probabilities for each class:
+
+
+[6]
+0s
+tf.nn.softmax(predictions).numpy()
+array([[0.2090286 , 0.10547243, 0.06299504, 0.05647103, 0.0730339 ,
+        0.07208829, 0.16033408, 0.11445155, 0.09417764, 0.05194749]],
+      dtype=float32)
+Note: It is possible to bake the tf.nn.softmax function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output.
+
+Define a loss function for training using losses.SparseCategoricalCrossentropy:
+
+
+[7]
+0s
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+The loss function takes a vector of ground truth values and a vector of logits and returns a scalar loss for each example. This loss is equal to the negative log probability of the true class: The loss is zero if the model is sure of the correct class.
+
+This untrained model gives probabilities close to random (1/10 for each class), so the initial loss should be close to -tf.math.log(1/10) ~= 2.3.
+
+
+[8]
+0s
+loss_fn(y_train[:1], predictions).numpy()
+np.float32(2.6298637)
+Before you start training, configure and compile the model using Keras Model.compile. Set the optimizer class to adam, set the loss to the loss_fn function you defined earlier, and specify a metric to be evaluated for the model by setting the metrics parameter to accuracy.
+
+
+[9]
+0s
+model.compile(optimizer='adam',
+              loss=loss_fn,
+              metrics=['accuracy'])
+Train and evaluate your model
+Use the Model.fit method to adjust your model parameters and minimize the loss:
+
+
+[10]
+48s
+model.fit(x_train, y_train, epochs=5)
+Epoch 1/5
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 10s 4ms/step - accuracy: 0.8593 - loss: 0.4838
+Epoch 2/5
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 7s 4ms/step - accuracy: 0.9571 - loss: 0.1471
+Epoch 3/5
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 6s 3ms/step - accuracy: 0.9676 - loss: 0.1060
+Epoch 4/5
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 11s 3ms/step - accuracy: 0.9730 - loss: 0.0864
+Epoch 5/5
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 11s 4ms/step - accuracy: 0.9767 - loss: 0.0739
+<keras.src.callbacks.history.History at 0x7f5bf2d52930>
+The Model.evaluate method checks the model's performance, usually on a validation set or test set.
+
+
+[11]
+0s
+model.evaluate(x_test,  y_test, verbose=2)
+313/313 - 1s - 2ms/step - accuracy: 0.9782 - loss: 0.0716
+[0.07162711769342422, 0.9782000184059143]
+The image classifier is now trained to ~98% accuracy on this dataset. To learn more, read the TensorFlow tutorials.
+
+If you want your model to return a probability, you can wrap the trained model, and attach the softmax to it:
+
+
+[16]
+0s
+probability_model = tf.keras.Sequential([
+  model,
+  tf.keras.layers.Softmax()
+])
+
+[17]
+0s
+probability_model(x_test[:5])
+<tf.Tensor: shape=(5, 10), dtype=float32, numpy=
+array([[2.9350798e-07, 3.9527256e-10, 4.7689191e-05, 7.0089678e-05,
+        8.8404267e-10, 6.7443708e-08, 1.0115397e-13, 9.9987590e-01,
+        2.1174162e-07, 5.6683457e-06],
+       [1.6305499e-08, 2.6619816e-04, 9.9972850e-01, 2.9275905e-06,
+        7.0434300e-13, 2.0666222e-07, 8.6740517e-09, 6.3171027e-12,
+        2.0859848e-06, 1.4105246e-10],
+       [4.1634085e-08, 9.9926394e-01, 2.6317242e-05, 9.4920631e-07,
+        4.0576637e-05, 2.6966413e-06, 1.4861083e-06, 6.4504467e-04,
+        1.8855586e-05, 1.1423835e-07],
+       [9.9782592e-01, 5.2999862e-06, 2.3746517e-04, 3.8798109e-05,
+        6.1860737e-06, 5.9217156e-04, 9.0651854e-05, 1.1480562e-03,
+        3.5818215e-07, 5.5025983e-05],
+       [1.1628475e-05, 9.8456665e-09, 1.2420419e-06, 3.5318120e-08,
+        9.9463671e-01, 2.0886568e-05, 1.9834933e-05, 8.9805888e-04,
+        4.5256088e-06, 4.4069942e-03]], dtype=float32)>
+Conclusion
+Congratulations! You have trained a machine learning model using a prebuilt dataset using the Keras API.
+
+For more examples of using Keras, check out the tutorials. To learn more about building models with Keras, read the guides. If you want learn more about loading and preparing data, see the tutorials on image data loading or CSV data loading.
+
